@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<!--
+  1. LECKE: EGY WEBOLDAL HÁROM RÉSZBŐL ÁLL
+  ------------------------------------------
+  HTML  = a SZERKEZET (mi van az oldalon: cím, mezők, gomb)
+  CSS   = a KINÉZET   (színek, méretek, elrendezés)
+  JS    = a VISELKEDÉS (mi történik, ha rákattintasz a gombra)
+
+  Most mind a három ebben az egy fájlban van, hogy egyszerű legyen.
+  A fájlt dupla kattintással megnyithatod a böngészőben, szerver sem kell hozzá.
+-->
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <!-- Ez teszi telefonon is jól nézővé az oldalt: -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- A title és a description a Google-találatban jelenik meg.
+       Ez a SEO alapja: a keresők ezt olvassák el először. -->
+  <title>Megtakarítás kalkulátor – kamatos kamat számítás</title>
+  <meta name="description" content="Számold ki, mennyi pénzed lesz havi rendszeres megtakarítással és kamatos kamattal. Ingyenes, gyors, magyar kalkulátor.">
+
+  <style>
+    /* 2. LECKE: CSS
+       A "szabály" felépítése: kiválasztó { tulajdonság: érték; }
+       Pl. a body { background: ... } az egész oldal hátterét állítja. */
+
+    body {
+      font-family: system-ui, Arial, sans-serif;
+      background: #f3f6fb;
+      margin: 0;
+      padding: 16px;
+      color: #1b2a41;
+    }
+
+    /* Az ".kartya" a "kartya" osztályú elemekre vonatkozik (pont = osztály) */
+    .kartya {
+      max-width: 480px;
+      margin: 24px auto;
+      background: white;
+      padding: 24px;
+      border-radius: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+
+    h1 { font-size: 1.5rem; margin-top: 0; }
+
+    label { display: block; margin-top: 14px; font-weight: 600; }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      font-size: 1rem;
+      border: 1px solid #c5cfdd;
+      border-radius: 8px;
+      box-sizing: border-box; /* a méret a keretet is magában foglalja */
+    }
+
+    button {
+      width: 100%;
+      margin-top: 20px;
+      padding: 12px;
+      font-size: 1.05rem;
+      background: #2f6fed;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover { background: #2459c4; } /* :hover = amikor fölé viszed az egeret */
+
+    #eredmeny {
+      margin-top: 22px;
+      padding: 16px;
+      background: #eaf2ff;
+      border-radius: 10px;
+      display: none;            /* alapból rejtett, a JS jeleníti meg */
+    }
+    #eredmeny .nagy { font-size: 1.6rem; font-weight: 700; color: #2f6fed; }
+  </style>
+</head>
+
+<body>
+  <!-- 3. LECKE: HTML
+       Az elemek "címkékkel" készülnek: <h1>cím</h1>.
+       Az "id" egyedi név: ezzel találja meg a JavaScript az elemet. -->
+  <div class="kartya">
+    <h1>Megtakarítás kalkulátor</h1>
+    <p>Add meg az adatokat, és kiszámoljuk, mennyi pénzed lesz a végén.</p>
+
+    <label for="kezdo">Kezdő összeg (Ft)</label>
+    <input id="kezdo" type="number" value="100000" min="0">
+
+    <label for="havi">Havi befizetés (Ft)</label>
+    <input id="havi" type="number" value="30000" min="0">
+
+    <label for="kamat">Éves kamat (%)</label>
+    <input id="kamat" type="number" value="6" min="0" step="0.1">
+
+    <label for="ev">Futamidő (év)</label>
+    <input id="ev" type="number" value="10" min="1" max="60">
+
+    <!-- onclick: kattintáskor lefut a szamol() nevű függvény (lásd lent) -->
+    <button onclick="szamol()">Számolás</button>
+
+    <div id="eredmeny">
+      <div>Végösszeg:</div>
+      <div class="nagy" id="vegosszeg"></div>
+      <p>Ebből befizetett: <b id="befizetett"></b><br>
+         Kamatból keletkezett: <b id="nyereseg"></b></p>
+    </div>
+  </div>
+
+  <script>
+    /* 4. LECKE: JAVASCRIPT
+       A függvény (function) egy névvel ellátott "recept":
+       ha meghívod, a benne lévő lépések sorban lefutnak. */
+
+    function szamol() {
+
+      // 1) ADATOK BEOLVASÁSA a mezőkből.
+      //    document.getElementById("kezdo") = megkeresi az id="kezdo" elemet
+      //    .value = a beírt szöveg; Number(...) számmá alakítja
+      const kezdo = Number(document.getElementById("kezdo").value);
+      const havi  = Number(document.getElementById("havi").value);
+      const evesKamat = Number(document.getElementById("kamat").value);
+      const ev    = Number(document.getElementById("ev").value);
+
+      // 2) ELŐKÉSZÍTÉS: havi szinten számolunk.
+      const r = evesKamat / 100 / 12;   // havi kamatláb (6% -> 0.005)
+      const n = ev * 12;                // hány hónapig tart
+
+      // 3) A KÉPLET (ez a matematika, nem a programozás!)
+      //    A kezdő összeg kamatos kamattal:   kezdo * (1 + r)^n
+      //    A havi befizetések összege:        havi * ((1 + r)^n - 1) / r
+      //    Math.pow(alap, kitevő) = hatványozás
+      let vegosszeg;
+      if (r === 0) {
+        // Ha nincs kamat, a képlet 0-val osztana, ezért külön kezeljük
+        vegosszeg = kezdo + havi * n;
+      } else {
+        const novekedes = Math.pow(1 + r, n);
+        vegosszeg = kezdo * novekedes + havi * (novekedes - 1) / r;
+      }
+
+      const befizetett = kezdo + havi * n;
+      const nyereseg = vegosszeg - befizetett;
+
+      // 4) KIÍRÁS. A forint() segédfüggvény szépen formáz (lásd lent).
+      document.getElementById("vegosszeg").textContent = forint(vegosszeg);
+      document.getElementById("befizetett").textContent = forint(befizetett);
+      document.getElementById("nyereseg").textContent = forint(nyereseg);
+
+      // Az eredménydobozt láthatóvá tesszük (a CSS-ben rejtett volt)
+      document.getElementById("eredmeny").style.display = "block";
+    }
+
+    // Segédfüggvény: 1234567.8 -> "1 234 568 Ft"
+    function forint(szam) {
+      return Math.round(szam).toLocaleString("hu-HU") + " Ft";
+    }
+  </script>
+</body>
+</html>
