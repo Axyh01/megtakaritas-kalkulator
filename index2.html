@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<!--
+  2. LECKE – MIT VÁLTOZOTT AZ ELSŐ VERZIÓHOZ KÉPEST?
+  ---------------------------------------------------
+  1) SEO: részletesebb <head> (canonical, Open Graph) + magyarázó szöveg az oldalon
+  2) Hibakezelés: rossz adatnál (üres, negatív) hibaüzenetet írunk ki
+  3) Éves táblázat: ciklussal (for) végigszámoljuk az éveket
+  4) A számolás külön függvényben van (szamitas), így tesztelhető
+  5) Mérőkód helye (analitika) – lásd a lap alján
+-->
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- A Google-találatban ez a kék cím és a szürke leírás jelenik meg.
+       Cím: kb. 60 karakter, leírás: kb. 150 karakter a jó. -->
+  <title>Megtakarítás kalkulátor – kamatos kamat számítás havi befizetéssel</title>
+  <meta name="description" content="Ingyenes megtakarítás kalkulátor: számold ki, mennyi pénzed lesz havi rendszeres befizetéssel és kamatos kamattal, éves bontásban.">
+
+  <!-- A canonical megmondja a Google-nek, mi az oldal "hivatalos" címe,
+       így nem keveri össze több változattal. -->
+  <link rel="canonical" href="https://axyh01.github.io/megtakaritas-kalkulator/">
+
+  <!-- Open Graph: így jelenik meg a link, ha megosztod Messengeren, Facebookon stb. -->
+  <meta property="og:title" content="Megtakarítás kalkulátor – kamatos kamat számítás">
+  <meta property="og:description" content="Számold ki, mennyi pénzed lesz havi befizetéssel és kamatos kamattal.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://axyh01.github.io/megtakaritas-kalkulator/">
+  <meta property="og:locale" content="hu_HU">
+
+  <!-- Ide kerül majd a Google Search Console ellenőrző sora, ha kéri.
+       Így fog kinézni (a kódot a Google adja, ne írd át):
+       <meta name="google-site-verification" content="IDE_JON_A_KOD"> -->
+
+  <style>
+    /* CSS-változók: a színeket egy helyen állítjuk, és mindenhol használjuk.
+       Ha egy színt át akarsz írni, elég itt egyszer megtenni. */
+    :root {
+      --hatter: #f3f6fb;
+      --kartya: #ffffff;
+      --szoveg: #1b2a41;
+      --fo-szin: #2f6fed;
+      --fo-szin-sotet: #2459c4;
+      --keret: #c5cfdd;
+      --halvany: #eaf2ff;
+      --hiba: #b3261e;
+    }
+
+    body {
+      font-family: system-ui, Arial, sans-serif;
+      background: var(--hatter);
+      color: var(--szoveg);
+      margin: 0;
+      padding: 16px;
+      line-height: 1.55;
+    }
+
+    .kartya {
+      max-width: 640px;
+      margin: 24px auto;
+      background: var(--kartya);
+      padding: 24px;
+      border-radius: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+
+    h1 { font-size: 1.6rem; margin-top: 0; }
+    h2 { font-size: 1.2rem; margin-top: 28px; }
+
+    label { display: block; margin-top: 14px; font-weight: 600; }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      font-size: 1rem;
+      border: 1px solid var(--keret);
+      border-radius: 8px;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 20px;
+      padding: 12px;
+      font-size: 1.05rem;
+      background: var(--fo-szin);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover { background: var(--fo-szin-sotet); }
+
+    /* Hibaüzenet: alapból rejtett, a JS mutatja meg */
+    #hiba {
+      display: none;
+      margin-top: 14px;
+      color: var(--hiba);
+      font-weight: 600;
+    }
+
+    #eredmeny {
+      margin-top: 22px;
+      padding: 16px;
+      background: var(--halvany);
+      border-radius: 10px;
+      display: none;
+    }
+    #eredmeny .nagy { font-size: 1.7rem; font-weight: 700; color: var(--fo-szin); }
+
+    /* Táblázat: a sok oszlop miatt telefonon vízszintesen görgethető */
+    .tabla-doboz { overflow-x: auto; margin-top: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--keret); }
+    th:first-child, td:first-child { text-align: left; }
+    th { background: var(--halvany); }
+
+    .kis { font-size: 0.85rem; color: #5b6b82; }
+    details { margin-top: 10px; }
+    summary { cursor: pointer; font-weight: 600; }
+  </style>
+</head>
+
+<body>
+  <div class="kartya">
+    <!-- Az oldalon EGY <h1> legyen: ez a legfontosabb cím, ezt nézi leginkább a Google. -->
+    <h1>Megtakarítás kalkulátor</h1>
+    <p>Add meg az adatokat, és kiszámoljuk, mennyi pénzed lesz a végén, éves bontásban is.</p>
+
+    <label for="kezdo">Kezdő összeg (Ft)</label>
+    <input id="kezdo" type="number" value="100000" min="0" inputmode="numeric">
+
+    <label for="havi">Havi befizetés (Ft)</label>
+    <input id="havi" type="number" value="30000" min="0" inputmode="numeric">
+
+    <label for="kamat">Éves kamat (%)</label>
+    <input id="kamat" type="number" value="6" min="0" step="0.1" inputmode="decimal">
+
+    <label for="ev">Futamidő (év)</label>
+    <input id="ev" type="number" value="10" min="1" max="60" step="1" inputmode="numeric">
+
+    <button onclick="szamol()">Számolás</button>
+
+    <div id="hiba" role="alert"></div>
+
+    <div id="eredmeny">
+      <div>Végösszeg:</div>
+      <div class="nagy" id="vegosszeg"></div>
+      <p>Ebből befizetett: <b id="befizetett"></b><br>
+         Kamatból keletkezett: <b id="nyereseg"></b></p>
+
+      <details>
+        <summary>Éves bontás megtekintése</summary>
+        <div class="tabla-doboz">
+          <table>
+            <thead>
+              <tr><th>Év</th><th>Befizetett</th><th>Egyenleg</th></tr>
+            </thead>
+            <!-- A sorokat a JavaScript tölti ki -->
+            <tbody id="tablatest"></tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+
+    <p class="kis">A kalkulátor tájékoztató jellegű. A tényleges hozam nem garantált, az adókat és a díjakat nem számolja bele.</p>
+
+    <!-- SEO: a Google szöveget olvas. Ezek a részek a keresőknek ÉS az embereknek is hasznosak. -->
+    <h2>Hogyan működik a kamatos kamat?</h2>
+    <p>Kamatos kamatnál a megkeresett kamat is kamatozni kezd. Ha 100 000 forintot
+       6%-os éves kamattal egy évre lekötsz, a végén 106 000 forintod lesz. A második évben már
+       erre a 106 000 forintra kapsz kamatot, így a növekedés évről évre gyorsul.</p>
+
+    <h2>Mit jelent a havi befizetés?</h2>
+    <p>Ha minden hónapban félreteszel egy fix összeget, az is kamatozni kezd a befizetése után.
+       Hosszú távon a rendszeresség többet számít, mint a kezdő összeg nagysága.</p>
+
+    <h2>Gyakori kérdések</h2>
+    <details>
+      <summary>Mennyi kamatot érdemes beírni?</summary>
+      <p>Ez a terméktől függ (megtakarítási számla, állampapír, befektetési alap). Mindig az adott
+         termék tájékoztatójában szereplő, valós adatot használd, és számolj óvatosabb értékkel is.</p>
+    </details>
+    <details>
+      <summary>Hogyan számolja a kalkulátor a kamatot?</summary>
+      <p>Havi kamatozással: az éves kamatot elosztja 12-vel, és a befizetések a hónap végén érkeznek.
+         A bankok és a termékek ettől eltérően is számolhatnak.</p>
+    </details>
+    <details>
+      <summary>Beleszámít az infláció?</summary>
+      <p>Nem. Az infláció csökkenti a pénz vásárlóerejét, ezért a valós hozam alacsonyabb lehet,
+         mint a kijelzett összeg.</p>
+    </details>
+  </div>
+
+  <script>
+    /* =========================================================
+       A SZÁMOLÁS KÜLÖN FÜGGVÉNYBEN (szamitas)
+       ---------------------------------------------------------
+       Ez a "tiszta" függvény: számokat kap, számokat ad vissza,
+       az oldalhoz (HTML-hez) nem nyúl. Ezért könnyű tesztelni.
+       ========================================================= */
+    function szamitas(kezdo, havi, evesKamat, ev) {
+      const r = evesKamat / 100 / 12;   // havi kamatláb
+      const n = ev * 12;                // hónapok száma
+
+      let egyenleg = kezdo;             // ennyi pénzünk van éppen
+      let befizetett = kezdo;           // ennyit tettünk be eddig
+      const sorok = [];                 // az éves táblázat sorai
+
+      // CIKLUS: a "for" ugyanazt a lépést ismétli, hónapról hónapra.
+      // honap = 1, 2, 3, ... n
+      for (let honap = 1; honap <= n; honap++) {
+        egyenleg = egyenleg * (1 + r) + havi;  // 1) a kamat hozzáadódik, 2) jön a befizetés
+        befizetett += havi;
+
+        // A % a maradékos osztás: ha honap osztható 12-vel, akkor éppen egy év telt le.
+        if (honap % 12 === 0) {
+          sorok.push({ ev: honap / 12, befizetett: befizetett, egyenleg: egyenleg });
+        }
+      }
+
+      return {
+        vegosszeg: egyenleg,
+        befizetett: befizetett,
+        nyereseg: egyenleg - befizetett,
+        sorok: sorok
+      };
+    }
+
+    /* =========================================================
+       AZ OLDALT KEZELŐ FÜGGVÉNY (szamol)
+       Ez köti össze a mezőket, a számolást és a kiírást.
+       ========================================================= */
+    function szamol() {
+      const kezdo     = Number(document.getElementById("kezdo").value);
+      const havi      = Number(document.getElementById("havi").value);
+      const evesKamat = Number(document.getElementById("kamat").value);
+      const ev        = Number(document.getElementById("ev").value);
+
+      // ADAT-ELLENŐRZÉS: sosem bízhatunk abban, hogy a felhasználó jó adatot ír be.
+      // Number("") értéke 0, ezért az üres mezőt külön ellenőrizzük is a szövegen.
+      const mezok = ["kezdo", "havi", "kamat", "ev"];
+      const vanUres = mezok.some(function (id) {
+        return document.getElementById(id).value.trim() === "";
+      });
+
+      let uzenet = "";
+      if (vanUres) {
+        uzenet = "Kérlek, tölts ki minden mezőt.";
+      } else if (kezdo < 0 || havi < 0 || evesKamat < 0) {
+        uzenet = "Az összegek és a kamat nem lehetnek negatívak.";
+      } else if (!Number.isInteger(ev) || ev < 1 || ev > 60) {
+        uzenet = "A futamidő 1 és 60 közötti egész szám legyen.";
+      } else if (evesKamat > 100) {
+        uzenet = "A kamat legfeljebb 100% lehet.";
+      }
+
+      const hibaDoboz = document.getElementById("hiba");
+      const eredmenyDoboz = document.getElementById("eredmeny");
+
+      if (uzenet !== "") {
+        hibaDoboz.textContent = uzenet;
+        hibaDoboz.style.display = "block";
+        eredmenyDoboz.style.display = "none";
+        return;                         // a return itt kilép: tovább nem számolunk
+      }
+      hibaDoboz.style.display = "none";
+
+      const eredmeny = szamitas(kezdo, havi, evesKamat, ev);
+
+      document.getElementById("vegosszeg").textContent = forint(eredmeny.vegosszeg);
+      document.getElementById("befizetett").textContent = forint(eredmeny.befizetett);
+      document.getElementById("nyereseg").textContent = forint(eredmeny.nyereseg);
+
+      // A táblázat kitöltése: minden évhez létrehozunk egy sort (<tr>).
+      const tablatest = document.getElementById("tablatest");
+      tablatest.innerHTML = "";         // előbb kitöröljük a régi sorokat
+      eredmeny.sorok.forEach(function (sor) {
+        const tr = document.createElement("tr");
+        [sor.ev + ". év", forint(sor.befizetett), forint(sor.egyenleg)].forEach(function (szoveg) {
+          const td = document.createElement("td");
+          td.textContent = szoveg;
+          tr.appendChild(td);
+        });
+        tablatest.appendChild(tr);
+      });
+
+      eredmenyDoboz.style.display = "block";
+    }
+
+    // 1234567.8 -> "1 234 568 Ft"
+    function forint(szam) {
+      return Math.round(szam).toLocaleString("hu-HU") + " Ft";
+    }
+  </script>
+
+  <!-- ===== MÉRŐKÓD (analitika) HELYE =====
+       Ide jön majd a látogatószámláló kódja, amit a szolgáltatótól kapsz.
+       Addig hagyd üresen. -->
+</body>
+</html>

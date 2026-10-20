@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://axyh01.github.io/megtakaritas-kalkulator/sitemap.xml
